@@ -1,0 +1,18 @@
+# Dependencias e instalación local
+node_modules/
+npm-debug.log*
+
+# Entorno y credenciales
+.env
+.env.local
+
+# Archivos de sistema operativo (macOS)
+.DS_Store
+
+# Archivos de IDEs / Editores
+.idea/
+.vscode/
+*.iml
+.gradle/
+build/
+dist/
