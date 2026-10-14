@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanzas verry</title>
+    <link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+    <!-- Navbar Dinámico -->
+    <header id="app-nav"></header>
+
+    <!-- Contenedor Principal de Vistas -->
+    <main id="app-view">
+        <p class="loading">Iniciando sistema...</p>
+    </main>
+
+    <!-- Inicialización del Sistema Web -->
+    <script type="module">
+        import { renderNavbar } from './components/navbar.js';
+        import './js/router.js';
+
+        // Inicializar componentes globales al cargar el DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNavbar();
+            
+            // Si el router no cargó ninguna vista aún, cargamos Movimientos por defecto
+            const viewContainer = document.getElementById('app-view');
+           // if (viewContainer && viewContainer.innerHTML.includes('Iniciando sistema...')) {
+            //    renderMovements();
+           // }
+        });
+    </script>
+</body>
+</html>

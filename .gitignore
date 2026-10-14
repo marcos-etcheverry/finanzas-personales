@@ -1,18 +1,29 @@
-# Dependencias e instalación local
+# Dependencias
 node_modules/
-npm-debug.log*
+**/node_modules/
 
-# Entorno y credenciales
-.env
-.env.local
-
-# Archivos de sistema operativo (macOS)
-.DS_Store
-
-# Archivos de IDEs / Editores
-.idea/
-.vscode/
-*.iml
-.gradle/
-build/
+# Compilados de TypeScript / Builds y Gradle de Android
 dist/
+**/dist/
+build/
+android/.gradle/
+android/app/build/
+.kotlin/
+**/ .kotlin/
+
+# Bases de datos SQLite locales y archivos temporales (WAL / SHM)
+*.db
+*.sqlite
+*.sqlite-journal
+*.db-shm
+*.db-wal
+
+# Archivos del Sistema Operativo y Editores
+.DS_Store
+.vscode/
+.idea/
+
+# Variables de entorno y uploads locales
+.env
+uploads/*
+!uploads/.gitkeep
