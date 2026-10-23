@@ -62,6 +62,18 @@ export async function render() {
 
     await loadAndRenderCategories();
 }
+// Función auxiliar para renderizar el icono o imagen de la categoría
+function renderCategoryIcon(icon) {
+    if (!icon) return '📁'; // Icono por defecto si no tiene nada
+    
+    // Si es una URL, ruta local o archivo de imagen
+    if (icon.startsWith('http') || icon.startsWith('/') || icon.includes('.')) {
+        return `<img src="${icon}" alt="icono" style="width: 18px; height: 18px; object-fit: contain; vertical-align: middle; margin-right: 6px; border-radius: 4px;" />`;
+    }
+    
+    // Si es un emoji o texto directo
+    return `<span style="margin-right: 6px; font-size: 1.1rem; vertical-align: middle;">${icon}</span>`;
+}
 
 async function loadAndRenderCategories() {
     const contentDiv = document.getElementById('categorias-content');
@@ -98,7 +110,7 @@ async function loadAndRenderCategories() {
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             ${parent.color ? `<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${parent.color};"></span>` : ''}
-                            <h3 style="color: var(--accent); font-size: 1.1rem; margin: 0;">📁 ${parent.title}</h3>
+             <h3 style="color: var(--accent); font-size: 1.1rem; margin: 0; display: flex; align-items: center;">${renderCategoryIcon(parent.icon)} ${parent.title}</h3>
                             ${badgeType}
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
@@ -113,7 +125,7 @@ async function loadAndRenderCategories() {
                 subs.forEach(sub => {
                     html += `
                         <li style="display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 0.95rem;">
-                            <span>└─ ${sub.title}</span>
+                            <span style="display: flex; align-items: center;">└─ ${renderCategoryIcon(sub.icon)} ${sub.title}</span>
                             <div style="display: flex; gap: 0.4rem;">
                                 <button class="btn-edit" data-uid="${sub.uid}" style="background: #3b82f6; color: white; border: none; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Editar</button>
                                 <button class="btn-delete" data-uid="${sub.uid}" style="background: #ef4444; color: white; border: none; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Eliminar</button>

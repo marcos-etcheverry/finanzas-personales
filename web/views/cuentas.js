@@ -80,7 +80,14 @@ async function cargarCuentas() {
             return;
         }
 
-        let html = `<div class="metrics-grid">`;
+        // Ordenar por posición si existe
+        accounts.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+        let html = `
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 1rem;">
+                <div style="display: flex; flex-direction: column;">
+        `;
+
         accounts.forEach((acc, index) => {
             const currencySymbol = acc.currency === 'USD' ? 'U$S' : '$';
             const balanceValue = acc.balance !== undefined ? acc.balance : (acc.balance_cents || 0);
@@ -91,38 +98,64 @@ async function cargarCuentas() {
             const accountIcon = acc.icon || '';
             const includeBalance = acc.include_in_balance !== 0;
             const accountPosition = acc.position !== undefined ? acc.position : index + 1;
+            const accountType = acc.type || 'cash'; // Determinamos el tipo correcto
             
             let iconHtml = `<span style="font-size: 1.2rem;">💼</span>`;
             if (accountIcon && accountIcon.startsWith('uploads/')) {
-                iconHtml = `<img src="http://localhost:3000/${accountIcon}" style="width: 28px; height: 28px; object-fit: cover; border-radius: 6px;" alt="Logo">`;
+                iconHtml = `<img src="http://localhost:3000/${accountIcon}" style="width: 70px; height: 50px; object-fit: cover; border-radius: 6px;" alt="Logo">`;
             }
-            
+
             html += `
-                <div class="metric-box" style="border-left: 4px solid ${accountColor}; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); border-left: 4px solid ${accountColor}; background: rgba(15, 23, 42, 0.2); transition: background 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.08)'" onmouseout="this.style.background='rgba(15, 23, 42, 0.2)'">
+                    
+                    <!-- Izquierda: Icono, Nombre, Moneda y Estado -->
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            ${iconHtml}
+                        </div>
+                        <div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                ${iconHtml}
+                                <span style="font-weight: bold; font-size: 1rem; color: var(--text-main);">${accountName}</span>
                                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 0.1rem 0.4rem; border-radius: 4px; color: var(--text-muted);">
-                                    Orden: #${accountPosition} ${includeBalance ? '' : '• (Excluida)'}
+                                    ${accountCurrency}
                                 </span>
+                                ${includeBalance ? '' : '<span style="font-size: 0.7rem; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 0.1rem 0.3rem; border-radius: 4px;">Excluida del balance</span>'}
                             </div>
-                            <div style="display: flex; gap: 0.25rem;">
-                                <button class="btn-subir" data-id="${accountId}" data-pos="${accountPosition}" title="Subir prioridad" style="background: transparent; border: 1px solid var(--border); color: white; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">▲</button>
-                                <button class="btn-bajar" data-id="${accountId}" data-pos="${accountPosition}" title="Bajar prioridad" style="background: transparent; border: 1px solid var(--border); color: white; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">▼</button>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.1rem;">
+                                Orden: #${accountPosition} • Tipo: ${accountType}
                             </div>
                         </div>
-                        <h3>${accountName} (${accountCurrency})</h3>
-                        <p style="margin-top: 0.5rem;">${currencySymbol} ${Number(balanceValue).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="btn-editar" data-id="${accountId}" data-name="${accountName}" data-currency="${accountCurrency}" data-balance="${balanceValue}" data-color="${accountColor}" data-include="${includeBalance ? 1 : 0}" data-position="${accountPosition}" style="background: var(--accent); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Editar</button>
-                        <button class="btn-eliminar" data-id="${accountId}" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Eliminar</button>
+
+                    <!-- Derecha: Saldo y Botones de Control / Acciones -->
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div style="text-align: right;">
+                            <span style="font-size: 1.05rem; font-weight: bold; color: var(--text-main);">
+                                ${currencySymbol} ${Number(balanceValue).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                            <!-- Botones de Reordenamiento Rápido -->
+                            <button class="btn-subir" data-id="${accountId}" data-pos="${accountPosition}" title="Subir" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; cursor: pointer; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">▲</button>
+                            <button class="btn-bajar" data-id="${accountId}" data-pos="${accountPosition}" title="Bajar" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; cursor: pointer; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">▼</button>
+                            
+                            <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem;"></div>
+
+                            <!-- Botones de ABM (con data-type inyectado) -->
+                            <button class="btn-editar" data-id="${accountId}" data-type="${accountType}" data-name="${accountName}" data-currency="${accountCurrency}" data-balance="${balanceValue}" data-color="${accountColor}" data-include="${includeBalance ? 1 : 0}" data-position="${accountPosition}" style="background: #3b82f6; color: white; border: none; padding: 0.4rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500;">Editar</button>
+                            <button class="btn-eliminar" data-id="${accountId}" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.7rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500;">Eliminar</button>
+                        </div>
                     </div>
+
                 </div>
             `;
         });
-        html += `</div>`;
+
+        html += `
+                </div>
+            </div>
+        `;
 
         contentDiv.innerHTML = html;
         vincularAccionesABM();
@@ -200,20 +233,27 @@ function configurarEventosABM() {
 }
 
 function vincularAccionesABM() {
-    // 1. Vincular botones de editar
+    // 1. Vincular botones de editar con discriminación de tipo
     document.querySelectorAll('.btn-editar').forEach(btn => {
         btn.addEventListener('click', () => {
-            const { id, name, currency, balance, color, include } = btn.dataset;
-            document.getElementById('form-title').innerText = `Editar Cuenta: ${name}`;
-            document.getElementById('account-id').value = id;
-            document.getElementById('account-name').value = name;
-            document.getElementById('account-currency').value = currency;
-            document.getElementById('account-balance').value = balance;
-            document.getElementById('account-color').value = color || '#3b82f6';
-            document.getElementById('account-image-file').value = '';
-            document.getElementById('account-include-balance').checked = include === '1';
-            document.getElementById('account-form-container').style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const { id, name, currency, balance, color, include, type, position } = btn.dataset;
+            
+            // Verificamos si es una tarjeta de crédito o una cuenta normal
+            if (type === 'credit_card' || type === 'TARJETA') {
+                // Redirigir a la sección de tarjetas de crédito
+                window.location.hash = `#/tarjetas?edit=${id}`;
+            } else {
+                // Abrir el formulario estándar de edición de cuentas
+                document.getElementById('form-title').innerText = `Editar Cuenta: ${name}`;
+                document.getElementById('account-id').value = id;
+                document.getElementById('account-name').value = name;
+                document.getElementById('account-currency').value = currency;
+                document.getElementById('account-balance').value = balance;
+                document.getElementById('account-color').value = color || '#3b82f6';
+                document.getElementById('account-include-balance').checked = include === '1';
+                document.getElementById('account-form-container').style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
     });
 
