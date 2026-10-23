@@ -10,6 +10,7 @@ import { handleSettingsRoutes } from './routes/settings';
 import { handleRatesRoutes } from './routes/rates';
 import { handleCreditCardsRoutes } from './routes/creditCards';
 
+
 const PORT = 3000;
 
 function parseJsonBody(req: http.IncomingMessage): Promise<any> {
@@ -66,15 +67,12 @@ const server = http.createServer(async (req, res) => {
   if (await handleTransfersRoutes(req, res, pathname)) {
     return;
   }
- // 6. TRANSFERS tarjetas de credito
-if (await handleCreditCardsRoutes(req, res, pathname)) {
-  return;
-}
+
 // En el server (junto a los otros módulos):
 if (await handleRatesRoutes(req, res, pathname)) {
   return;
 }
-// 6. CREDIT CARDS (Delegado a su módulo con soporte para sub-rutas)
+// 6. CREDIT CARDS (Punto de entrada único y limpio para todas las rutas de tarjetas)
   if (pathname.startsWith('/api/credit-cards')) {
     if (await handleCreditCardsRoutes(req, res, pathname)) {
       return;

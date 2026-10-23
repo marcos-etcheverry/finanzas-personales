@@ -1,7 +1,6 @@
 import http from 'http';
 import { db } from '../db';
 
-// Helper para parsear el cuerpo JSON de las peticiones
 function parseJsonBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -21,8 +20,8 @@ export async function handleTransfersRoutes(req: http.IncomingMessage, res: http
     return false;
   }
 
-  // --- GET /api/transfers (Listar transferencias recientes) ---
-  if (req.method === 'GET') {
+  // --- GET /api/transfers ---
+  if (req.method === 'GET' && pathname === '/api/transfers') {
     try {
       const transfers = db.prepare(`
         SELECT 
@@ -37,23 +36,19 @@ export async function handleTransfersRoutes(req: http.IncomingMessage, res: http
         LIMIT 50
       `).all();
 
-      console.log(`[GET] /api/transfers -> Se devolvieron ${transfers.length} transferencias.`);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(transfers));
     } catch (err: any) {
-      console.error('[ERROR GET /api/transfers]:', err.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }
     return true;
   }
 
-  // --- POST /api/transfers (Crear transferencia y actualizar saldos de ambas cuentas atómicamente) ---
-  if (req.method === 'POST') {
+  // --- POST /api/transfers ---
+  if (req.method === 'POST' && pathname === '/api/transfers') {
     try {
       const body = await parseJsonBody(req);
-      console.log('[POST] /api/transfers -> Body:', body);
-
       const { fromAccountUid, toAccountUid, fromAmount, toAmount, comment, date } = body;
 
       if (!fromAccountUid || !toAccountUid || !fromAmount) {
@@ -89,11 +84,15 @@ export async function handleTransfersRoutes(req: http.IncomingMessage, res: http
           WHERE account_uid = ?
         `).run(fromAmount, now, fromAccountUid);
 
+        const targetAccount = db.prepare('SELECT type FROM account WHERE uid = ?').get(toAccountUid) as any;
+// Al ser pasivo (tarjeta de crédito), pagar la tarjeta significa sumar al balance para reducir la deuda
+        const balanceChange = finalToAmount;
+
         db.prepare(`
           UPDATE account_balance 
           SET value = value + ?, updated_at = ? 
           WHERE account_uid = ?
-        `).run(finalToAmount, now, toAccountUid);
+        `).run(balanceChange, now, toAccountUid);
 
         db.prepare(`
           INSERT INTO transfer 
@@ -105,11 +104,112 @@ export async function handleTransfersRoutes(req: http.IncomingMessage, res: http
       });
 
       const newTransfer = executeTransfer();
-      console.log('[POST] /api/transfers -> Transferencia creada:', newTransfer.uid);
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(newTransfer));
     } catch (err: any) {
-      console.error('[ERROR POST /api/transfers]:', err.message);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return true;
+  }
+
+  // --- PUT /api/transfers/:uid (Modificar transferencia) ---
+  const putMatch = pathname.match(/^\/api\/transfers\/(.+)$/);
+  if (req.method === 'PUT' && putMatch) {
+    const trUid = putMatch[1];
+    try {
+      const body = await parseJsonBody(req);
+      const oldTr = db.prepare('SELECT * FROM transfer WHERE uid = ?').get(trUid) as any;
+      if (!oldTr) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Transferencia no encontrada.' }));
+        return true;
+      }
+
+      const newFromAcc = body.fromAccountUid || oldTr.fromAccountUid;
+      const newToAcc = body.toAccountUid || oldTr.toAccountUid;
+      const newFromAmount = body.fromAmount !== undefined ? body.fromAmount : oldTr.fromAmount;
+      const newToAmount = body.toAmount !== undefined ? body.toAmount : oldTr.toAmount;
+      const newComment = body.comment !== undefined ? body.comment : oldTr.comment;
+      const newDate = body.date || oldTr.date;
+      const now = new Date().toISOString();
+
+      const executeUpdate = db.transaction(() => {
+// 1. Revertir impacto anterior en saldos
+        db.prepare(`UPDATE account_balance SET value = value + ?, updated_at = ? WHERE account_uid = ?`)
+          .run(oldTr.fromAmount, now, oldTr.fromAccountUid);
+
+// Si el destino viejo era tarjeta de crédito, se revierte restando; si era cuenta común, también.
+        const oldTargetAcc = db.prepare('SELECT type FROM account WHERE uid = ?').get(oldTr.toAccountUid) as any;
+        const revertOldDest = (oldTargetAcc && oldTargetAcc.type === 'credit_card') ? -oldTr.toAmount : -oldTr.toAmount;
+        db.prepare(`UPDATE account_balance SET value = value + ?, updated_at = ? WHERE account_uid = ?`)
+          .run(revertOldDest, now, oldTr.toAccountUid);
+
+// 2. Aplicar nuevo impacto en saldos
+        db.prepare(`UPDATE account_balance SET value = value - ?, updated_at = ? WHERE account_uid = ?`)
+          .run(newFromAmount, now, newFromAcc);
+
+const newTargetAcc = db.prepare('SELECT type FROM account WHERE uid = ?').get(newToAcc) as any;
+        const applyNewDest = (newTargetAcc && newTargetAcc.type === 'credit_card') ? newToAmount : newToAmount;
+        db.prepare(`UPDATE account_balance SET value = value + ?, updated_at = ? WHERE account_uid = ?`)
+          .run(applyNewDest, now, newToAcc);
+
+        // 3. Actualizar registro
+        db.prepare(`
+          UPDATE transfer 
+          SET modified = ?, fromAccountUid = ?, toAccountUid = ?, fromAmount = ?, toAmount = ?, date = ?, comment = ?
+          WHERE uid = ?
+        `).run(now, newFromAcc, newToAcc, newFromAmount, newToAmount, newDate, newComment, trUid);
+
+        return { uid: trUid, success: true };
+      });
+
+      const result = executeUpdate();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err: any) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return true;
+  }
+
+  // --- DELETE /api/transfers/:uid (Eliminar transferencia y revertir saldos) ---
+  const deleteMatch = pathname.match(/^\/api\/transfers\/(.+)$/);
+  if (req.method === 'DELETE' && deleteMatch) {
+    const trUid = deleteMatch[1];
+    try {
+      const transfer = db.prepare('SELECT * FROM transfer WHERE uid = ?').get(trUid) as any;
+      if (!transfer) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Transferencia no encontrada.' }));
+        return true;
+      }
+
+      const now = new Date().toISOString();
+
+      const executeDelete = db.transaction(() => {
+        // 1. Revertir origen: devolver el dinero que había salido (sumar a account_balance)
+        db.prepare(`UPDATE account_balance SET value = value + ?, updated_at = ? WHERE account_uid = ?`)
+          .run(transfer.fromAmount, now, transfer.fromAccountUid);
+
+// 2. Revertir destino: quitar el dinero que había entrado según el tipo de cuenta
+        const targetAcc = db.prepare('SELECT type FROM account WHERE uid = ?').get(transfer.toAccountUid) as any;
+        const revertDest = (targetAcc && targetAcc.type === 'credit_card') ? -transfer.toAmount : -transfer.toAmount;
+        
+        db.prepare(`UPDATE account_balance SET value = value + ?, updated_at = ? WHERE account_uid = ?`)
+          .run(revertDest, now, transfer.toAccountUid);
+
+        // 3. Borrar el registro de transferencia
+        db.prepare('DELETE FROM transfer WHERE uid = ?').run(trUid);
+
+        return { success: true };
+      });
+
+      const result = executeDelete();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err: any) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }

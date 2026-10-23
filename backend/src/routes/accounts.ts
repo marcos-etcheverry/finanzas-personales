@@ -46,7 +46,7 @@ const accounts = db.prepare(`
           a.position
         FROM account a
         LEFT JOIN account_balance b ON a.uid = b.account_uid
-        WHERE a.isRemoved = 0 AND a.isActive = 1 AND  type = 'cash'
+        WHERE a.isRemoved = 0 AND a.isActive = 1 
         ORDER BY a.position ASC
       `).all();
       res.writeHead(200, { 'Content-Type': 'application/json' });
