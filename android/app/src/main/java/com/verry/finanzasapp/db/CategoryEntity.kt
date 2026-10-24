@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class CategoryEntity(
     @PrimaryKey val uid: String,
     val title: String,
-    val parentUid: String?
+    val parentUid: String?,
+    val type: String? // <-- Añadido para soportar el filtrado offline por Gasto/Ingreso
 )
-

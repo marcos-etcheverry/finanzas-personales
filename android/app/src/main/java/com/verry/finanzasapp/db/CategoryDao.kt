@@ -12,4 +12,8 @@ interface CategoryDao {
 
     @Query("SELECT * FROM local_categories ORDER BY title ASC")
     suspend fun getLocalCategories(): List<CategoryEntity>
+
+    // NUEVO: Limpiar la tabla local antes de reinsertar las frescas de la PC
+    @Query("DELETE FROM local_categories")
+    suspend fun clearCategories()
 }

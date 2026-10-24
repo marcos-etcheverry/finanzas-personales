@@ -8,5 +8,6 @@ data class AccountEntity(
     @PrimaryKey val uid: String,
     val title: String,
     val currencyCode: String,
-    val balance: Double
+    val balance: Double,
+    val type: String? = "cash" // <-- Propiedad obligatoria en Room
 )

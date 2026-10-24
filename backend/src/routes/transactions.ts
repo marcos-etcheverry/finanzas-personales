@@ -46,10 +46,9 @@ export async function handleTransactionsRoutes(req: http.IncomingMessage, res: h
     return true;
   }
 
-  // --- POST /api/transactions ---
+// --- POST /api/transactions ---
   if (req.method === 'POST' && pathname === '/api/transactions') {
     try {
-  
       const body = await parseJsonBody(req);
       const type = body.type;
       const account_uid = body.account_uid || body.accountUid;
@@ -77,40 +76,40 @@ export async function handleTransactionsRoutes(req: http.IncomingMessage, res: h
       const now = new Date().toISOString();
 
       const executeTx = db.transaction(() => {
-        
-        
-        
-        logWithDate('/api/transactions', `Transaction - Datos recibidos: ${JSON.stringify(executeTx)}`);
+        // A. Insertar transacción
         db.prepare(`
           INSERT INTO \`transaction\` 
             (uid, created, modified, type, account_uid, category_uid, tag, amountInAccountCurrency, accountCurrencyCode, date, comment)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(txUid, now, now, type, account_uid, category_uid, tag, amount, account.currencyCode, date, comment);
 
+        // B. Si es Tarjeta de Crédito, generar cuotas
         if (account.type === 'credit_card') {
-        logWithDate('/api/transactions', 'Transaction - Gasto en la tarjeta de crédito, generando cuotas...');
-        
+          logWithDate('/api/transactions', 'Gasto en tarjeta de crédito: generando cuotas...');
+          
           const installmentAmount = amount / installments;
           const stmtInstallment = db.prepare(`
             INSERT INTO credit_card_installments 
             (transaction_id, installment_number, total_installments, amount, due_date, status)
             VALUES (?, ?, ?, ?, ?, 'pending')
           `);
-          logWithDate('/api/transactions', `Transaction - Datos recibidos: ${JSON.stringify(stmtInstallment)}`);
    
           let baseDate = new Date(date);
           for (let i = 1; i <= installments; i++) {
-            baseDate.setMonth(baseDate.getMonth())+1; 
             const dueDateStr = baseDate.toISOString().split('T')[0];
             stmtInstallment.run(txUid, i, installments, installmentAmount, dueDateStr);
+            baseDate.setMonth(baseDate.getMonth() + 1); 
           }
         } else {
+          // C. Si es Cuenta Normal (Efectivo/Banco), DESCONTAR / SUMAR DEL SALDO
           const delta = type === 'INCOME' ? amount : -amount;
           db.prepare(`
             UPDATE account_balance 
             SET value = value + ?, updated_at = ?
             WHERE account_uid = ?
           `).run(delta, now, account_uid);
+          
+          logWithDate('/api/transactions', `Saldo actualizado para la cuenta ${account_uid}. Delta aplicado: ${delta}`);
         }
 
         return { uid: txUid, type, account_uid, installments, amount, date };
@@ -120,6 +119,7 @@ export async function handleTransactionsRoutes(req: http.IncomingMessage, res: h
       res.writeHead(201, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(newTx));
     } catch (err: any) {
+      logWithDate('/api/transactions', `Error al registrar transacción: ${err.message}`);
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }

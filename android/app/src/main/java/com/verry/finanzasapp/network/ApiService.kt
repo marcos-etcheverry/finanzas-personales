@@ -5,21 +5,24 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import com.google.gson.annotations.SerializedName
 
 data class AccountDto(
-    val id: String,
-    val uid: String,
-    val name: String,
-    val title: String,
-    val currency: String,
-    val currencyCode: String,
-    val balance: Double
+    @SerializedName("id") val id: String?,
+    @SerializedName("uid") val uid: String,
+    @SerializedName("name") val name: String?,
+    @SerializedName("title") val title: String,
+    @SerializedName("type") val type: String?, // <-- Propiedad obligatoria
+    @SerializedName("currency") val currency: String?,
+    @SerializedName("currencyCode") val currencyCode: String?,
+    @SerializedName("balance") val balance: Double
 )
 
 data class CategoryDto(
     val uid: String,
     val title: String,
-    val parent_uid: String?
+    val parent_uid: String?,
+    val type: String? // <-- Agregamos el tipo ('expense' o 'income')
 )
 
 data class TransactionRequest(
@@ -52,7 +55,7 @@ interface ApiService {
 }
 
 object NetworkModule {
-    private const val BASE_URL = "http://192.168.68.52:3000/"
+    private const val BASE_URL = "http://192.168.68.51:3000/"
 
     val apiService: ApiService by lazy {
         Retrofit.Builder()
