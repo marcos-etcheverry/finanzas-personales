@@ -8,5 +8,6 @@ data class CategoryEntity(
     @PrimaryKey val uid: String,
     val title: String,
     val parentUid: String?,
-    val type: String? // <-- Añadido para soportar el filtrado offline por Gasto/Ingreso
+    val type: String?,
+    val icon: String? = null // <-- Seteado null por defecto para evitar errores de constructor
 )

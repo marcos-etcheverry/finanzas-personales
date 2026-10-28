@@ -11,13 +11,13 @@ import androidx.room.RoomDatabase
         AccountEntity::class,
         CategoryEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun pendingTransactionDao(): PendingTransactionDao
-    abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun accountDao(): AccountDao
+    abstract fun pendingTransactionDao(): PendingTransactionDao // <-- ¡Esta es la línea que faltaba declarar!
 
     companion object {
         @Volatile
@@ -28,9 +28,9 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "finanzas_local.db"
+                    "finanzas_database"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // Permite recrear la BD si cambia el esquema en desarrollo
                     .build()
                 INSTANCE = instance
                 instance

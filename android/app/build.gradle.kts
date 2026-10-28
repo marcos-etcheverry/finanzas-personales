@@ -44,7 +44,9 @@ android {
 dependencies {
     // Room DB (SQLite)
     val roomVersion = "2.6.1"
-    // Borramos o comentamos la línea libs.androidx.core.ktx para evitar conflicto de versión
+    // Borramos o comentamos la línea libs.androidx.core.ktx para evitar conflicto de versiónç
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
