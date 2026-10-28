@@ -82,7 +82,7 @@ if (await handleRatesRoutes(req, res, pathname)) {
 if (await handleSettingsRoutes(req, res, pathname)) {
   return;
 }
-  // 6. FRONTEND ESTÁTICO (Soporte para raíz y archivos estáticos)
+// 6. FRONTEND ESTÁTICO (Soporte para raíz y archivos estáticos)
   if (req.method === 'GET') {
     let filePath = '';
     let contentType = 'text/html; charset=utf-8';
