@@ -43,7 +43,9 @@ const accounts = db.prepare(`
           a.include_in_balance,
           COALESCE(b.value, 0) as balance_cents,
           COALESCE(b.value, 0) as balance,
-          a.position
+          a.position,
+          a.closing_day,  -- <--- ¡Agregado aquí!
+          a.due_day       -- <--- ¡Agregado aquí!
         FROM account a
         LEFT JOIN account_balance b ON a.uid = b.account_uid
         WHERE a.isRemoved = 0 AND a.isActive = 1 
